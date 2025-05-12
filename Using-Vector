@@ -1,0 +1,104 @@
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+// ফাংশন: সিস্টেম Safe কি না সেটা যাচাই করা
+bool isSystemSafe(const vector<vector<int>>& maxDemand,     // সর্বোচ্চ রিসোর্সের চাহিদা
+                  const vector<vector<int>>& currentAllocation, // বর্তমান রিসোর্সের বরাদ্দ
+                  const vector<int>& availableResources,  // সিস্টেমে ফ্রি রিসোর্স
+                  int totalProcesses,  // মোট প্রসেস সংখ্যা
+                  int totalResourceTypes) { // মোট রিসোর্সের ধরন
+
+    // Need ম্যাট্রিক্স তৈরি করা (Maximum demand - current allocation)
+    vector<vector<int>> remainingNeed(totalProcesses, vector<int>(totalResourceTypes));
+    vector<bool> isProcessFinished(totalProcesses, false); // প্রসেসটি শেষ হয়েছে কিনা তাও চেক করা হবে
+    vector<int> work = availableResources;  // কাজের জন্য ব্যবহৃত রিসোর্সের তালিকা
+    vector<int> safeSequence;  // সেফ সিকোয়েন্স স্টোর করা হবে
+
+    // Need ম্যাট্রিক্স হিসাব করা (Maximum - Allocation)
+    for (int i = 0; i < totalProcesses; ++i)
+        for (int j = 0; j < totalResourceTypes; ++j)
+            remainingNeed[i][j] = maxDemand[i][j] - currentAllocation[i][j];
+
+    int completedProcesses = 0;
+
+    // যতক্ষণ না সব প্রসেস সফলভাবে সম্পন্ন হয়, চেষ্টা করে যেতে থাকবে
+    while (completedProcesses < totalProcesses) {
+        bool foundSafeProcess = false;
+
+        // সব প্রসেস পরীক্ষা করা হচ্ছে
+        for (int i = 0; i < totalProcesses; ++i) {
+            if (!isProcessFinished[i]) {  // যদি প্রসেসটি শেষ না হয়ে থাকে
+
+                bool canAllocate = true;  // এটা ধরছি যে রিসোর্স allocation করা যাবে
+
+                // চেক করছি, প্রতিটি রিসোর্সের জন্য প্রসেসটি allocation করা যাবে কি না
+                for (int j = 0; j < totalResourceTypes; ++j) {
+                    if (remainingNeed[i][j] > work[j]) {  // যদি প্রয়োজনীয় রিসোর্স ফ্রি রিসোর্সের চেয়ে বেশি হয়
+                        canAllocate = false;  // তাহলে allocation সম্ভব নয়
+                        break;
+                    }
+                }
+
+                // যদি allocation করা সম্ভব হয়, তাহলে
+                if (canAllocate) {
+                    // রিসোর্স যোগ করা হবে
+                    for (int j = 0; j < totalResourceTypes; ++j)
+                        work[j] += currentAllocation[i][j];
+
+                    safeSequence.push_back(i);  // সেফ সিকোয়েন্সে এই প্রসেসটি যোগ করা হবে
+                    isProcessFinished[i] = true;  // প্রসেসটি শেষ বলে চিহ্নিত করা হবে
+                    foundSafeProcess = true;  // সেফ প্রসেস পাওয়া গেছে
+                    ++completedProcesses;  // সম্পন্ন প্রসেসের সংখ্যা বৃদ্ধি
+                }
+            }
+        }
+
+        // যদি কোনো সেফ প্রসেস পাওয়া না যায়, তাহলে সিস্টেম Unsafe (Deadlock হতে পারে)
+        if (!foundSafeProcess) {
+            cout << "❌ সিস্টেম এখন Safe অবস্থায় নেই! Deadlock হতে পারে।" << endl;
+            return false;
+        }
+    }
+
+    // যদি সব প্রসেস সফলভাবে শেষ হয়, তাহলে সিস্টেম Safe (তবে Safe Sequence দেখানো হবে)
+    cout << "✅ সিস্টেম Safe অবস্থায় আছে।" << endl;
+    cout << "👉 Safe Execution Sequence: ";
+    for (int p : safeSequence)
+        cout << "P" << p << " ";  // Safe Execution Order দেখানো হবে
+    cout << endl;
+
+    return true;
+}
+
+int main() {
+    int totalProcesses = 5;  // মোট প্রসেস সংখ্যা
+    int totalResourceTypes = 3;  // মোট রিসোর্স টাইপ সংখ্যা
+
+    // Allocation Matrix (প্রতিটি প্রসেসের জন্য রিসোর্স বরাদ্দ)
+    vector<vector<int>> currentAllocation = {
+        {0, 1, 0},  // P0
+        {2, 0, 0},  // P1
+        {3, 0, 2},  // P2
+        {2, 1, 1},  // P3
+        {0, 0, 2}   // P4
+    };
+
+    // Max Demand Matrix (প্রতিটি প্রসেসের জন্য সর্বোচ্চ রিসোর্স চাহিদা)
+    vector<vector<int>> maxDemand = {
+        {7, 5, 3},  // P0
+        {3, 2, 2},  // P1
+        {9, 0, 2},  // P2
+        {2, 2, 2},  // P3
+        {4, 3, 3}   // P4
+    };
+
+    // Available Resources (বর্তমানে ফ্রি রিসোর্স)
+    vector<int> availableResources = {3, 3, 2};  // {A1, A2, A3}
+
+    // Safe check কল
+    isSystemSafe(maxDemand, currentAllocation, availableResources, totalProcesses, totalResourceTypes);
+
+    return 0;
+}
